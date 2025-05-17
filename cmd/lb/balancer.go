@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"io"
@@ -84,10 +86,16 @@ func forward(dst string, rw http.ResponseWriter, r *http.Request) error {
 	}
 }
 
+// chooseServer вибирає сервер на основі хешу адреси клієнта
+func chooseServer(remoteAddr string) string {
+	hash := sha1.Sum([]byte(remoteAddr))
+	idx := binary.BigEndian.Uint32(hash[:4]) % uint32(len(serversPool))
+	return serversPool[idx]
+}
+
 func main() {
 	flag.Parse()
 
-	// TODO: Використовуйте дані про стан сервера, щоб підтримувати список тих серверів, яким можна відправляти запит.
 	for _, server := range serversPool {
 		server := server
 		go func() {
@@ -98,8 +106,8 @@ func main() {
 	}
 
 	frontend := httptools.CreateServer(*port, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// TODO: Реалізуйте свій алгоритм балансувальника.
-		forward(serversPool[0], rw, r)
+		server := chooseServer(r.RemoteAddr)
+		forward(server, rw, r)
 	}))
 
 	log.Println("Starting load balancer...")
