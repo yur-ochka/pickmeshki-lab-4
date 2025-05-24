@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestChooseServer_ConsistentHashing(t *testing.T) {
@@ -10,19 +12,16 @@ func TestChooseServer_ConsistentHashing(t *testing.T) {
 	server1 := chooseServer(addr)
 	server2 := chooseServer(addr)
 
-	if server1 != server2 {
-		t.Errorf("Expected consistent server choice, got %s and %s", server1, server2)
-	}
+	assert.Equal(t, server1, server2, "Same address should map to the same server")
 }
 
 func TestChooseServer_Distribution(t *testing.T) {
 	hits := make(map[string]int)
 	for i := 0; i < 1000; i++ {
-		addr := "10.0.0." + fmt.Sprintf("%d", i%255)
+		addr := fmt.Sprintf("10.0.0.%d", i%255)
 		server := chooseServer(addr)
 		hits[server]++
 	}
-	if len(hits) < 2 {
-		t.Errorf("Expected distribution across servers, got only one server")
-	}
+
+	assert.GreaterOrEqual(t, len(hits), 2, "Expected requests to be distributed across at least 2 servers")
 }
