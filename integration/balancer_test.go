@@ -23,20 +23,31 @@ func TestBalancer(t *testing.T) {
 		t.Skip("Balancer is not available or not responding with 200 OK")
 	}
 
-	// Виконуємо лише один запит
-	resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
-	if err != nil {
-		t.Fatalf("Request failed: %v", err)
-	}
-	defer resp.Body.Close()
+	servers := make(map[string]bool)
+	const requestCount = 20
 
-	server := resp.Header.Get("lb-from")
-	if server == "" {
-		t.Log("Response received, but lb-from header is missing")
+	for i := 0; i < requestCount; i++ {
+		resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
+		if err != nil {
+			t.Fatalf("Request failed: %v", err)
+		}
+		server := resp.Header.Get("lb-from")
+		resp.Body.Close()
+
+		if server != "" {
+			servers[server] = true
+		} else {
+			t.Log("Missing lb-from header in response")
+		}
+	}
+
+	if len(servers) < 2 {
+		t.Errorf("Expected responses from at least 2 servers, got: %v", servers)
 	} else {
-		t.Logf("Response from [%s]", server)
+		t.Logf("Responses received from servers: %v", servers)
 	}
 }
+
 
 func checkBalancer() bool {
 	resp, err := client.Get(baseAddress)
