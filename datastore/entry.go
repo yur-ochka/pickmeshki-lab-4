@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	//"crypto/sha1"
 )
 
 type entry struct {
 	key, value string
+	checksum   [20]byte
 }
 
 // 0           4    8     kl+8  kl+12     <-- offset
@@ -18,20 +20,27 @@ type entry struct {
 
 func (e *entry) Encode() []byte {
 	kl, vl := len(e.key), len(e.value)
-	size := kl + vl + 12
+	size := kl + vl + 12 + len(e.checksum)
 	res := make([]byte, size)
 	binary.LittleEndian.PutUint32(res, uint32(size))
 	binary.LittleEndian.PutUint32(res[4:], uint32(kl))
 	copy(res[8:], e.key)
 	binary.LittleEndian.PutUint32(res[kl+8:], uint32(vl))
 	copy(res[kl+12:], e.value)
+	copy(res[kl+12+vl:], e.checksum[:])
 	return res
 }
 
 func (e *entry) Decode(input []byte) {
-	e.key = decodeString(input[4:])
-	e.value = decodeString(input[len(e.key)+8:])
+	kl := int(binary.LittleEndian.Uint32(input[4:]))
+	keyStart := 8
+	valueLen := int(binary.LittleEndian.Uint32(input[keyStart+kl:]))
+
+	e.key = string(input[keyStart : keyStart+kl])
+	e.value = string(input[keyStart+kl+4 : keyStart+kl+4+valueLen])
+	copy(e.checksum[:], input[keyStart+kl+4+valueLen:])
 }
+
 
 func decodeString(v []byte) string {
 	l := binary.LittleEndian.Uint32(v)

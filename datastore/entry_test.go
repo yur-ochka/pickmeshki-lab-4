@@ -7,7 +7,7 @@ import (
 )
 
 func TestEntry_Encode(t *testing.T) {
-	e := entry{"key", "value"}
+	e := entry{key: "key", value: "value"}
 	e.Decode(e.Encode())
 	if e.key != "key" {
 		t.Error("incorrect key")
@@ -21,12 +21,12 @@ func TestReadValue(t *testing.T) {
 	var (
 		a, b entry
 	)
-	a = entry{"key", "test-value"}
+	a = entry{key: "key", value: "test-value"}
 	originalBytes := a.Encode()
 
 	b.Decode(originalBytes)
 	t.Log("encode/decode", a, b)
-	if a != b {
+	if a.key != b.key || a.value != b.value {
 		t.Error("Encode/Decode mismatch")
 	}
 
@@ -36,7 +36,7 @@ func TestReadValue(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log("encode/decodeFromReader", a, b)
-	if a != b {
+	if a.key != b.key || a.value != b.value {
 		t.Error("Encode/DecodeFromReader mismatch")
 	}
 	if n != len(originalBytes) {

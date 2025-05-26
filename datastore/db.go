@@ -10,6 +10,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"crypto/sha1"
 )
 
 const (
@@ -40,6 +41,9 @@ type Db struct {
 	writeCh chan writeRequest
 	wg      sync.WaitGroup
 	rwMu    sync.RWMutex 
+
+
+	closeOnce sync.Once
 }
 
 type Segment struct {
@@ -89,9 +93,12 @@ func (db *Db) writeLoop() {
 }
 
 func (db *Db) putInternal(key, value string) error {
+	hash := sha1.Sum([]byte(value))
+
 	e := entry{
 		key:   key,
 		value: value,
+		checksum: hash,
 	}
 	data := e.Encode()
 
@@ -144,10 +151,15 @@ func (db *Db) Get(key string) (string, error) {
 	return "", ErrNotFound
 }
 
+
 func (db *Db) Close() error {
-	close(db.writeCh)
-	db.wg.Wait()
-	return db.out.Close()
+	var err error
+	db.closeOnce.Do(func() {
+		close(db.writeCh)
+		db.wg.Wait()
+		err = db.out.Close()
+	})
+	return err
 }
 
 func (db *Db) readFromFile(path string, position int64) (string, error) {
@@ -166,8 +178,15 @@ func (db *Db) readFromFile(path string, position int64) (string, error) {
 	if _, err = record.DecodeFromReader(bufio.NewReader(file)); err != nil {
 		return "", err
 	}
+
+	calculated := sha1.Sum([]byte(record.value))
+	if record.checksum != calculated {
+		return "", fmt.Errorf("data checksum mismatch for key '%s'", record.key)
+	}
+
 	return record.value, nil
 }
+
 
 func (db *Db) recover() error {
 	f, err := os.Open(db.outPath)

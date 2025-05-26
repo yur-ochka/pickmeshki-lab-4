@@ -259,3 +259,54 @@ func TestMergeAtomicity(t *testing.T) {
         }
     }
 }
+
+func TestCorruptedChecksumEntry(t *testing.T) {
+	tmp := t.TempDir()
+	db, err := Open(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	err = db.Put("key", "valid")
+	if err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
+
+	// Закриваємо базу перед прямою модифікацією файлу
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Шукаємо поточний data-файл
+	dataPath := filepath.Join(tmp, "current-data")
+	content, err := os.ReadFile(dataPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Псуємо останній байт value (корупція даних)
+	if len(content) > 0 {
+		content[len(content)-1] ^= 0xFF
+	}
+
+	// Перезаписуємо файл
+	err = os.WriteFile(dataPath, content, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Заново відкриваємо базу
+	db, err = Open(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// Тепер Get повинен повернути помилку
+	_, err = db.Get("key")
+	if err == nil {
+		t.Fatal("Expected checksum error after corruption, but got nil")
+	}
+	t.Logf("Successfully detected checksum mismatch: %v", err)
+}
