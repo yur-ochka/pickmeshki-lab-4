@@ -1,8 +1,6 @@
 module github.com/roman-mazur/architecture-practice-4-template
 
-
-
-go 1.24
+go 1.22
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
