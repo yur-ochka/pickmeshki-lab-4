@@ -1,5 +1,5 @@
 module github.com/roman-mazur/architecture-practice-4-template
-import "architecture-practice-4-template/datastore"
+
 
 
 go 1.24

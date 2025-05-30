@@ -2,18 +2,22 @@ version: "3.8"
 
 services:
   server1:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.server
     networks:
       - servers
     ports:
       - "8080:8080"
 
   server2:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.server
     networks:
       - servers
     ports:
-      - "8081:8080"
+      - "8082:8080"  # змінив порт, щоб уникнути конфлікту
 
   db:
     build:
@@ -22,10 +26,11 @@ services:
     networks:
       - servers
     ports:
-      - "8081:8081"
+      - "8081:8081"  # це залишаємо для доступу до БД
 
   balancer:
-    build: .
+    build:
+      context: .
     command: "lb"
     networks:
       - servers
