@@ -27,17 +27,24 @@ func TestBalancer(t *testing.T) {
 	const requestCount = 20
 
 	for i := 0; i < requestCount; i++ {
-		resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data", baseAddress))
+		resp, err := client.Get(fmt.Sprintf("%s/api/v1/some-data?key=pickmeshki", baseAddress))
 		if err != nil {
 			t.Fatalf("Request failed: %v", err)
 		}
 		server := resp.Header.Get("lb-from")
-		resp.Body.Close()
+		defer resp.Body.Close()
 
 		if server != "" {
 			servers[server] = true
 		} else {
 			t.Log("Missing lb-from header in response")
+		}
+
+		if resp.StatusCode == http.StatusNotFound {
+			t.Errorf("Unexpected 404 Not Found from server on iteration %d", i)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected 200 OK, got %d", resp.StatusCode)
 		}
 	}
 
